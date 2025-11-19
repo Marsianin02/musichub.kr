@@ -1,0 +1,331 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎵 Music Player</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding-bottom: 150px; /* Создаем место для плеера внизу */
+        }
+        .album-card {
+            transition: transform .2s;
+        }
+        .album-card:hover {
+            transform: scale(1.02);
+        }
+        .audio-player {
+            width: 110%;
+            margin-top: 10px;
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4"> /* Панель навигации */
+        <div class="container">
+            <a class="navbar-brand ajax-link" href="{% url 'home' %}">🎵 MusicHub</a>
+            <form class="d-flex mx-auto" id="search-form" action="{% url 'search' %}" method="GET" style="width: 50%;">
+                <input class="form-control me-2" type="search" placeholder="Найти плейлисты, треки или теги..."
+                       aria-label="Search" name="q" value="{{ request.GET.q }}">
+                <button class="btn btn-outline-light" type="submit">Найти</button>
+            </form>
+            <div class="d-flex">
+                {% if user.is_authenticated %}
+                    <span class="navbar-text me-3">Привет, {{ user.username }}!</span>
+                    <a href="{% url 'create_playlist' %}" class="btn btn-outline-light me-2">Создать плейлист</a>
+                    <a href="{% url 'logout' %}" class="btn btn-secondary">Выйти</a>
+                {% else %}
+                    <a href="{% url 'login' %}" class="btn btn-outline-light me-2">Войти</a>
+                    <a href="{% url 'signup' %}" class="btn btn-primary">Регистрация</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+<main class="container">
+    <div id="main-content">
+        {% block content %}{% endblock %}
+    </div>
+</main>
+
+<div class="player-container fixed-bottom bg-dark text-white p-3"> /* Музыкальный плеер */
+    <div class="row align-items-center">
+        <div class="col-md-3 d-flex align-items-center">
+            <img id="player-album-cover" src="https://via.placeholder.com/64" alt="Album Cover" class="img-fluid me-3" style="width: 64px; height: 64px;">
+            <div>
+                <h6 id="player-song-title" class="mb-0">Выберите трек</h6>
+                <small id="player-artist" class="text-muted">Исполнитель</small>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="d-flex justify-content-center align-items-center mb-2">
+                <button id="prev-btn" class="btn btn-outline-light border-0"><i class="fas fa-step-backward"></i></button>
+                <button id="play-pause-btn" class="btn btn-light rounded-circle mx-3 p-2" style="width: 48px; height: 48px;"><i class="fas fa-play"></i></button>
+                <button id="next-btn" class="btn btn-outline-light border-0"><i class="fas fa-step-forward"></i></button>
+            </div>
+            <div class="d-flex align-items-center">
+                <span id="current-time" class="me-2" style="font-size: 0.8rem;">0:00</span>
+                <input type="range" id="progress-bar" class="form-range" value="0" step="1" style="flex-grow: 1;">
+                <span id="duration" class="ms-2" style="font-size: 0.8rem;">0:00</span>
+            </div>
+        </div>
+
+        <div class="col-md-3 d-flex justify-content-end align-items-center">
+            <i class="fas fa-volume-up me-2"></i>
+            <input type="range" id="volume-bar" class="form-range w-50" min="0" max="1" step="0.01" value="1">
+        </div>
+    </div>
+    <audio id="main-player" class="d-none"></audio>
+</div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    const musicPlayer = {
+        // Player elements that are always on the page
+        player: null,
+        playPauseBtn: null,
+        playIcon: '<i class="fas fa-play"></i>',
+        pauseIcon: '<i class="fas fa-pause"></i>',
+        nextBtn: null,
+        prevBtn: null,
+        albumCover: null,
+        songTitle: null,
+        artistName: null,
+        progressBar: null,
+        currentTimeEl: null,
+        durationEl: null,
+        volumeBar: null,
+
+        // Player state
+        currentPlaylist: [],
+        currentTrackIndex: -1,
+
+        /**
+         * init(): Находит все постоянные элементы плеера и прикрепляет к ним пользователей
+         * Запускается только один раз
+         */
+        init: function() {
+            this.player = document.getElementById('main-player');
+            this.playPauseBtn = document.getElementById('play-pause-btn');
+            this.nextBtn = document.getElementById('next-btn');
+            this.prevBtn = document.getElementById('prev-btn');
+            this.albumCover = document.getElementById('player-album-cover');
+            this.songTitle = document.getElementById('player-song-title');
+            this.artistName = document.getElementById('player-artist');
+            this.progressBar = document.getElementById('progress-bar');
+            this.currentTimeEl = document.getElementById('current-time');
+            this.durationEl = document.getElementById('duration');
+            this.volumeBar = document.getElementById('volume-bar');
+
+            // Attach listeners to player controls
+            this.playPauseBtn.addEventListener('click', () => this.togglePlayPause());
+            this.nextBtn.addEventListener('click', () => this.playNext());
+            this.prevBtn.addEventListener('click', () => this.playPrev());
+            this.player.addEventListener('timeupdate', () => this.updateProgressBar());
+            this.player.addEventListener('ended', () => this.playNext());
+            this.progressBar.addEventListener('input', () => this.seek());
+            this.volumeBar.addEventListener('input', (e) => this.player.volume = e.target.value);
+        },
+
+        /**
+         * reinitializeSongLinks(): Находит все ссылки на треки
+         * и привязывает к клику мышки для проигрывания трека
+         * Запускается каждый раз, при обновлении страницы и AJAX-запросах
+         */
+        reinitializeSongLinks: function() {
+            // Сначала удаляем все старые обработчики, чтобы избежать дублирования
+            // Это самый надежный способ при AJAX-навигации
+            document.querySelectorAll('.song-link').forEach(link => {
+                const newLink = link.cloneNode(true);
+                link.parentNode.replaceChild(newLink, link);
+            });
+
+            // Теперь вешаем свежие обработчики на "чистые" ссылки
+            document.querySelectorAll('.song-link').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+
+                    const albumId = link.dataset.albumId;
+                    let songListElements = null;
+
+                    // Сначала пытаемся найти плейлист по ID (как на странице плейлиста)
+                    if (albumId) {
+                        songListElements = document.querySelectorAll(`#playlist-${albumId} .song-link`);
+                    }
+
+                    // Если не нашли (мы на странице поиска),
+                    // ищем все треки в ближайшем родительском <ul>
+                    if (!songListElements || songListElements.length === 0) {
+                        const parentList = link.closest('ul');
+                        if (parentList) {
+                            songListElements = parentList.querySelectorAll('.song-link');
+                        } else {
+                            // Если и <ul> нет, то плейлист будет состоять из 1 трека
+                            songListElements = [link];
+                        }
+                    }
+
+                    // Строим внутренний плейлист плеера из того, что нашли
+                    this.currentPlaylist = Array.from(songListElements).map(linkEl => ({
+                        src: linkEl.dataset.src,
+                        title: linkEl.dataset.title,
+                        artist: linkEl.dataset.artist,
+                        cover: linkEl.dataset.cover,
+                        linkElement: linkEl
+                    }));
+
+                    // Находим индекс кликнутого трека и запускаем
+                    const clickedIndex = this.currentPlaylist.findIndex(track => track.src === link.dataset.src);
+                    this.playTrack(clickedIndex);
+                });
+            });
+        },
+
+        // Возможности плеера
+        playTrack: function(index) {
+            if (index < 0 || index >= this.currentPlaylist.length) return;
+
+            const track = this.currentPlaylist[index];
+            this.player.src = track.src;
+            this.songTitle.textContent = track.title;
+            this.artistName.textContent = track.artist;
+            this.albumCover.src = track.cover;
+
+            this.player.play();
+            this.playPauseBtn.innerHTML = this.pauseIcon;
+            this.currentTrackIndex = index;
+            this.updateActiveLink();
+        },
+
+        togglePlayPause: function() {
+            if (this.player.paused) {
+                if (this.currentTrackIndex === -1 && this.currentPlaylist.length > 0) {
+                    this.playTrack(0);
+                } else {
+                    this.player.play();
+                }
+                this.playPauseBtn.innerHTML = this.pauseIcon;
+            } else {
+                this.player.pause();
+                this.playPauseBtn.innerHTML = this.playIcon;
+            }
+        },
+
+        playNext: function() {
+            if (this.currentPlaylist.length === 0) return;
+            const newIndex = (this.currentTrackIndex + 1) % this.currentPlaylist.length;
+            this.playTrack(newIndex);
+        },
+
+        playPrev: function() {
+            if (this.currentPlaylist.length === 0) return;
+            const newIndex = (this.currentTrackIndex - 1 + this.currentPlaylist.length) % this.currentPlaylist.length;
+            this.playTrack(newIndex);
+        },
+
+        // --- UI Update Methods ---
+        updateProgressBar: function() {
+            if (this.player.duration) {
+                this.progressBar.value = (this.player.currentTime / this.player.duration) * 100;
+                this.currentTimeEl.textContent = this.formatTime(this.player.currentTime);
+                this.durationEl.textContent = this.formatTime(this.player.duration);
+            }
+        },
+
+        seek: function() {
+            if (this.player.duration) {
+                this.player.currentTime = (this.progressBar.value / 100) * this.player.duration;
+            }
+        },
+
+        formatTime: function(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+        },
+
+        updateActiveLink: function() {
+            document.querySelectorAll('.song-link.active').forEach(link => link.classList.remove('active'));
+            if (this.currentTrackIndex !== -1) {
+                this.currentPlaylist[this.currentTrackIndex].linkElement.classList.add('active');
+            }
+        }
+    };
+
+
+    // Эта часть отвечает за динамическую подгрузку страницы
+    document.addEventListener('DOMContentLoaded', function() {
+        // Обрабатывает элементы управления плеера как только страница подгрузилась.
+        // Срабатывает один раз
+        musicPlayer.init();
+        // Обрабатывает ссылки на треки для контента, загруженного со страницей
+        musicPlayer.reinitializeSongLinks();
+
+        const mainContent = document.getElementById('main-content');
+        const searchForm = document.getElementById('search-form');
+
+        async function loadContent(url) {
+            try {
+                const response = await fetch(url, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const html = await response.text();
+                mainContent.innerHTML = html;
+                window.history.pushState({path: url}, '', url);
+
+                // После загрузки нового контента мы повторно инициализируем ссылки внутри него.
+                musicPlayer.reinitializeSongLinks();
+
+            } catch (error) {
+                console.error('Ошибка при загрузке контента:', error);
+                window.location.href = url; // Возвращаемся к обычной навигации
+            }
+        }
+
+        document.body.addEventListener('click', function(event) {
+            const link = event.target.closest('.ajax-link');
+            if (link) {
+                event.preventDefault();
+                loadContent(link.href);
+            }
+        });
+
+        // Перехватываем отправку формы поиска
+        searchForm.addEventListener('submit', function(event) {
+            event.preventDefault(); // Отменяем полную перезагрузку
+
+            // Собираем URL для AJAX-запроса
+            const query = this.querySelector('input[name="q"]').value;
+            const url = new URL(this.action); // Берем action из формы (т.е. /search/)
+            url.searchParams.set('q', query); // Добавляем ?q=...
+
+            // Загружаем контент с помощью нашей AJAX-функции
+            loadContent(url.href);
+        });
+
+        window.addEventListener('popstate', function(event) {
+            if (event.state && event.state.path) {
+                loadContent(event.state.path);
+            }
+        });
+    });
+</script>
+
+<style>
+    .song-link.active {
+        font-weight: bold;
+        color: #0d6efd; /* Цвет Bootstrap Primary */
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

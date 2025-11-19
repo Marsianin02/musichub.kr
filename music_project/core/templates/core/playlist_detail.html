@@ -1,0 +1,58 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <img src="{{ playlist.cover_image.url }}" class="img-fluid rounded" alt="{{ playlist.title }}">
+    </div>
+    <div class="col-md-8">
+        <h1>{{ playlist.title }}</h1>
+        <p class="text-muted">Автор: {{ playlist.creator.username }}</p>
+        <div>
+            {% for tag in playlist.tags.all %}
+                <span class="badge bg-primary">{{ tag }}</span>
+            {% endfor %}
+        </div>
+
+        {% if request.user == playlist.creator or request.user.is_superuser %}
+        <div class="mt-3">
+            <a href="{% url 'add_song_to_playlist' pk=playlist.pk %}" class="btn btn-success">Добавить трек</a>
+            <a href="{% url 'edit_playlist' pk=playlist.pk %}" class="btn btn-info">Редактировать</a>
+            <a href="{% url 'delete_playlist' pk=playlist.pk %}" class="btn btn-danger">Удалить</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<hr class="my-4">
+
+<h3 class="mb-3">Треки</h3>
+<ul class="list-group list-group-flush" id="playlist-{{ playlist.id }}">
+    {% for song in playlist.songs.all %}
+    <li class="list-group-item d-flex justify-content-between align-items-center">
+        <a href="#" class="song-link"
+           data-src="{{ song.audio_file.url }}"
+           data-title="{{ song.title }}"
+           data-artist="{{ playlist.creator.username }}"
+           data-cover="{{ playlist.cover_image.url }}"
+           data-album-id="{{ playlist.id }}">
+            {{ song.title }}
+        </a>
+
+        {% if request.user == playlist.creator or request.user.is_superuser %}
+        <div class="btn-group" role="group">
+            <a href="{% url 'edit_song' pk=song.pk %}" class="btn btn-sm btn-outline-info" title="Редактировать">
+                <i class="fas fa-pencil-alt"></i>
+            </a>
+            <a href="{% url 'delete_song' pk=song.pk %}" class="btn btn-sm btn-outline-danger" title="Удалить">
+                <i class="fas fa-trash"></i>
+            </a>
+        </div>
+        {% endif %}
+    </li>
+    {% empty %}
+    <li class="list-group-item">В этом плейлисте пока нет треков.</li>
+    {% endfor %}
+</ul>
+
+{% endblock %}

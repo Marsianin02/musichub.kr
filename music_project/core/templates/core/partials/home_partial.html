@@ -1,0 +1,22 @@
+<div class="row row-cols-1 row-cols-md-3 g-4">
+    {% for playlist in playlists %}
+    <div class="col">
+        <div class="card shadow-sm album-card">
+            <a href="{% url 'playlist_detail' pk=playlist.pk %}" class="ajax-link">
+                <img src="{{ playlist.cover_image.url }}" class="card-img-top" alt="{{ playlist.title }}">
+            </a>
+            <div class="card-body">
+                <h5 class="card-title"><a href="{% url 'playlist_detail' pk=playlist.pk %}" class="ajax-link text-dark text-decoration-none">{{ playlist.title }}</a></h5>
+                <p class="card-text text-muted">Автор: {{ playlist.creator.username }}</p>
+                <div>
+                    {% for tag in playlist.tags.all %}
+                        <span class="badge bg-secondary">{{ tag }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col"><p>Пока нет ни одного публичного плейлиста.</p></div>
+    {% endfor %}
+</div>

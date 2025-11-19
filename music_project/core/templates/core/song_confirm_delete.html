@@ -1,0 +1,26 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card text-center border-danger">
+            <div class="card-header bg-danger text-white">
+                Подтверждение удаления трека
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">Вы уверены, что хотите удалить трек?</h5>
+                <p class="card-text fs-4">
+                    <strong>"{{ song.title }}"</strong>
+                </p>
+                <p class="text-danger">Это действие нельзя будет отменить!</p>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Да, удалить трек</button>
+                    <a href="{% url 'playlist_detail' pk=song.playlist.pk %}" class="btn btn-secondary">Отмена</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

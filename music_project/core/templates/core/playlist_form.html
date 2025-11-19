@@ -1,0 +1,49 @@
+{% extends 'core/base.html' %}
+{% load widget_tweaks %}
+
+{% block content %}
+{{ form.media.css }}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="card-title text-center">{{ title }}</h2>
+                <hr>
+                {{ form.media.css }}
+
+                <form method="post" enctype="multipart/form-data" novalidate>
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label for="{{ form.title.id_for_label }}" class="form-label">{{ form.title.label }}</label>
+                        {% render_field form.title class="form-control" %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.cover_image.id_for_label }}" class="form-label">{{ form.cover_image.label }}</label>
+                        {% render_field form.cover_image class="form-control" %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.tags.id_for_label }}" class="form-label">{{ form.tags.label }}</label>
+                        {{ form.tags }}
+                    </div>
+                    <div class="mb-3">
+                        <label for="{{ form.new_tags.id_for_label }}" class="form-label">{{ form.new_tags.label }}</label>
+                        {% render_field form.new_tags class="form-control" %}
+                        <small class="form-text text-muted">{{ form.new_tags.help_text }}</small>
+                    </div>
+
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">Сохранить</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+    {{ form.media.js }}
+{% endblock %}

@@ -1,0 +1,48 @@
+<h1 class="display-5">Результаты поиска: "{{ query }}"</h1>
+<hr class="my-4">
+
+{% if not playlists_by_title and not playlists_by_tag and not songs_by_title and not songs_by_tag %}
+    <p class="lead">По вашему запросу ничего не найдено.</p>
+{% else %}
+
+    {% if playlists_by_title %}
+        <h2 class="mb-3">Плейлисты по названию</h2>
+        <div class="row row-cols-1 row-cols-md-3 g-4 mb-4">
+            {% for playlist in playlists_by_title %}
+                {% include 'core/partials/playlist_card.html' with playlist=playlist %}
+            {% endfor %}
+        </div>
+        <hr class="my-4">
+    {% endif %}
+
+    {% if playlists_by_tag %}
+        <h2 class="mb-3">Плейлисты по тегам</h2>
+        <div class="row row-cols-1 row-cols-md-3 g-4 mb-4">
+            {% for playlist in playlists_by_tag %}
+                {% include 'core/partials/playlist_card.html' with playlist=playlist %}
+            {% endfor %}
+        </div>
+        <hr class="my-4">
+    {% endif %}
+    
+    {% if songs_by_title %}
+        <h2 class="mb-3">Найденные треки</h2>
+        <ul class="list-group list-group-flush mb-4">
+            {% for song in songs_by_title %}
+                {% include 'core/partials/song_row.html' with song=song %}
+            {% endfor %}
+        </ul>
+        <hr class="my-4">
+    {% endif %}
+
+    {% if songs_by_tag %}
+        <h2 class="mb-3">Треки (в плейлистах по тегам)</h2>
+        <ul class="list-group list-group-flush mb-4">
+            {% for song in songs_by_tag %}
+                {% include 'core/partials/song_row.html' with song=song %}
+            {% endfor %}
+        </ul>
+        <hr class="my-4">
+    {% endif %}
+    
+{% endif %}

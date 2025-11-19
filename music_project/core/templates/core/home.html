@@ -1,0 +1,38 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="p-4 mb-4 bg-light rounded-3">
+    <div class="container-fluid py-5">
+        <h1 class="display-5 fw-bold">Добро пожаловать в MusicHub</h1>
+        <p class="col-md-8 fs-4">Слушайте, загружайте и делитесь своей любимой музыкой.</p>
+    </div>
+</div>
+
+
+
+<h2 class="mb-4">Публичные плейлисты</h2>
+
+<div class="row row-cols-1 row-cols-md-3 g-4">
+    {% for playlist in playlists %}
+    <div class="col">
+        <div class="card shadow-sm album-card">
+            <a href="{% url 'playlist_detail' pk=playlist.pk %}" class="ajax-link">
+                <img src="{{ playlist.cover_image.url }}" class="card-img-top" alt="{{ playlist.title }}">
+            </a>
+            <div class="card-body">
+                <h5 class="card-title"><a href="{% url 'playlist_detail' pk=playlist.pk %}" class="ajax-link text-dark text-decoration-none">{{ playlist.title }}</a></h5>
+                <p class="card-text text-muted">Автор: {{ playlist.creator.username }}</p>
+                <div>
+                    {% for tag in playlist.tags.all %}
+                        <span class="badge bg-secondary">{{ tag }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col"><p>Пока нет ни одного публичного плейлиста.</p></div>
+    {% endfor %}
+</div>
+
+{% endblock %}
